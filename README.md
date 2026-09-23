@@ -96,15 +96,19 @@ La tabla `users` la crea Hibernate al arrancar.
 
 ```properties
 server.port=8081
-spring.datasource.url=jdbc:postgresql://localhost:5432/apidb
-spring.datasource.username=alumno
-spring.datasource.password=123456
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/apidb}
+spring.datasource.username=${DB_USER:alumno}
+spring.datasource.password=${DB_PASSWORD:123456}
 jwt.secret=${JWT_SECRET:cambia-esta-clave-por-una-propia-de-32-caracteres-minimo}
 jwt.expiration=3600000
 ```
 
-`jwt.secret` se toma de la variable de entorno `JWT_SECRET`; el valor tras `:` es el
-de respaldo. La clave debe tener 32 caracteres como mínimo.
+La sintaxis `${VARIABLE:respaldo}` usa la variable de entorno si existe, y si no,
+el valor que va después de los dos puntos. Sin definir nada, la API arranca con
+los valores de respaldo. Para apuntar a otra base basta con definir `DB_URL`,
+`DB_USER` y `DB_PASSWORD` en el entorno, sin tocar el archivo.
+
+La clave de `jwt.secret` debe tener 32 caracteres como mínimo.
 
 **3. Arrancar.**
 
