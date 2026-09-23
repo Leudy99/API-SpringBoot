@@ -1,0 +1,751 @@
+{
+  "info": {
+    "_postman_id": "6f1d8a2e-3c4b-4e5f-9a7d-1b2c3d4e5f60",
+    "name": "API SpringBoot - JWT + CRUD Usuarios",
+    "description": "Coleccion para probar la API REST (Spring Boot + PostgreSQL + JWT, arquitectura hexagonal).\n\n## Donde se escriben los datos\n\nEn la pestana **Body** de cada request. Abre el request, edita el JSON y envia.\n\n## Las 4 variables\n\n| Variable | Que es |\n|---|---|\n| `baseUrl` | Direccion de la API: http://localhost:8081 |\n| `token` | Lo guarda solo el paso 2 al iniciar sesion |\n| `userId` | Lo guarda solo el paso 1 al registrarte |\n| `createdId` | Lo guarda solo el paso 5 al crear usuario |\n\nLas tres ultimas se llenan automaticamente. No las escribas a mano.\n\n## Importante\n\nEl email del paso 1 se repite en los pasos 2, 10 y 11. Si lo cambias, cambialo en los cuatro.\nEl email del paso 5 se repite en el paso 6.\n\n## Como usarla\n\nEjecuta las carpetas en orden. O clic derecho en la coleccion y **Run collection**.\nLa carpeta **5. Limpieza** borra el usuario de prueba para poder repetirlo todo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticación (público)",
+      "description": "Endpoints que NO requieren token. Edita los datos en la pestana Body de cada request.",
+      "item": [
+        {
+          "name": "Registrar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "const enviado = JSON.parse(pm.request.body.raw);",
+                  "pm.test(\"Guarda el email que enviaste\", () => pm.expect(body.email).to.eql(enviado.email));",
+                  "pm.test(\"NO devuelve la contraseña\", () => pm.expect(body).to.not.have.property(\"password\"));",
+                  "pm.collectionVariables.set(\"userId\", body.id);",
+                  "pm.environment.set(\"userId\", body.id);",
+                  "console.log(\"userId guardado:\", body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Leudy Luna\",\n  \"email\": \"leudy@test.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Edita name, email y password en la pestana **Body**.\n\nLa contrasena se guarda cifrada con BCrypt. El id devuelto queda en la variable `userId`.\n\nSi cambias el email aqui, cambialo tambien en los pasos 2, 10 y 11."
+          }
+        },
+        {
+          "name": "Iniciar sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Devuelve un token tipo Bearer\", () => {",
+                  "    pm.expect(body.token).to.be.a(\"string\").and.not.empty;",
+                  "    pm.expect(body.type).to.eql(\"Bearer\");",
+                  "});",
+                  "pm.collectionVariables.set(\"token\", body.token);",
+                  "pm.environment.set(\"token\", body.token);",
+                  "console.log(\"token guardado\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"leudy@test.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "El email y la contrasena del **Body** deben ser exactamente los del paso 1.\nSi no coinciden, responde 401.\n\nEl JWT devuelto se guarda solo en la variable `token`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Usuarios (requiere token)",
+      "description": "CRUD protegido. Todos mandan Authorization: Bearer {{token}}. Ejecuta antes 'Iniciar sesión'.",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Devuelve una lista\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));",
+                  "pm.test(\"Ningún usuario expone su contraseña\", () => {",
+                  "    pm.response.json().forEach(u => pm.expect(u).to.not.have.property(\"password\"));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar usuario por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const idPedido = pm.variables.get(\"userId\");",
+                  "pm.test(\"Es el usuario que registraste\", () => pm.expect(String(pm.response.json().id)).to.eql(String(idPedido)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Usa el id que quedó guardado al registrarte (`userId`). No tienes que escribirlo."
+          }
+        },
+        {
+          "name": "Crear usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "const enviado = JSON.parse(pm.request.body.raw);",
+                  "pm.test(\"Guarda el email que enviaste\", () => pm.expect(body.email).to.eql(enviado.email));",
+                  "pm.test(\"NO devuelve la contraseña\", () => pm.expect(body).to.not.have.property(\"password\"));",
+                  "pm.collectionVariables.set(\"createdId\", body.id);",
+                  "pm.environment.set(\"createdId\", body.id);",
+                  "console.log(\"createdId guardado:\", body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Perez\",\n  \"email\": \"ana@test.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Segundo usuario. Edita sus datos en la pestana **Body**.\n\nSu id queda en la variable `createdId`.\n\nSi cambias el email aqui, cambialo tambien en el paso 6."
+          }
+        },
+        {
+          "name": "Actualizar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "const enviado = JSON.parse(pm.request.body.raw);",
+                  "pm.test(\"El nombre quedó actualizado\", () => pm.expect(pm.response.json().name).to.eql(enviado.name));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Maria Perez\",\n  \"email\": \"ana@test.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{createdId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{createdId}}"
+              ]
+            },
+            "description": "Escribe el nombre nuevo en la pestana **Body**. El email debe ser el mismo del paso 5.\n\nEl body NO lleva password: se conserva la contrasena actual.\nSi envias un campo password, se vuelve a cifrar."
+          }
+        },
+        {
+          "name": "Eliminar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{createdId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{createdId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Casos de error",
+      "description": "Demuestran la seguridad y las validaciones. Todos DEBEN fallar con el código indicado.",
+      "item": [
+        {
+          "name": "401 - Sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Mismo endpoint que 'Listar usuarios' pero sin cabecera Authorization."
+          }
+        },
+        {
+          "name": "401 - Token inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "token-falso-inventado",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Un token que no fue firmado con nuestra clave es rechazado."
+          }
+        },
+        {
+          "name": "401 - Contraseña incorrecta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401 Unauthorized\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Mensaje genérico\", () => pm.expect(pm.response.json().message).to.eql(\"Email o contrasena incorrectos\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"leudy@test.com\",\n  \"password\": \"contrasena-incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "El email debe ser el del paso 1, con una contrasena equivocada.\n\nEl mensaje no dice cual de los dos fallo, a proposito."
+          }
+        },
+        {
+          "name": "409 - Email duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409 Conflict\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otro usuario\",\n  \"email\": \"leudy@test.com\",\n  \"password\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "El email debe ser el mismo del paso 1, para que choque.\n\nEl indice UNIQUE de la columna email lo impide."
+          }
+        },
+        {
+          "name": "404 - Usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "400 - Datos inválidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400 Bad Request\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Indica los 3 campos con error\", () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors).to.have.all.keys(\"name\", \"email\", \"password\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"no-es-un-email\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Datos malos a propósito: nombre vacío, email sin formato y contraseña corta. Aquí los valores SÍ van fijos, porque el objetivo es que fallen."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Sistema",
+      "item": [
+        {
+          "name": "Health (Actuator)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"La API está UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Estado de la API y de la conexión a PostgreSQL. Hoy requiere token porque SecurityConfig solo deja público /auth/**."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Limpieza",
+      "description": "Borra tu usuario para poder repetir toda la colección desde cero. Si no lo ejecutas, 'Registrar usuario' dará 409 la próxima vez.",
+      "item": [
+        {
+          "name": "Eliminar mi usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204 No Content\", () => pm.response.to.have.status(204));",
+                  "[\"token\", \"userId\", \"createdId\"].forEach(v => {",
+                  "    pm.collectionVariables.set(v, \"\");",
+                  "    pm.environment.set(v, \"\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Borra el usuario registrado en el paso 1 y limpia las variables automáticas."
+          }
+        }
+      ]
+    }
+  ]
+}
